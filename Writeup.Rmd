@@ -1,0 +1,116 @@
+---
+title: 'Practical Machine Learning - Peer-graded Assignment: Prediction Assignment
+  Writeup'
+author: "Akthem Rehab"
+date: "February 8, 2017"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+##Introduction
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement ??? a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+##Data Sources
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project comes from this original source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+##Project requirements
+- A report describing how model was built
+- How cross validation was used
+- The expected out of sample error
+- Justification of choices and assumptions
+
+##Uploading libraries & data 
+```{r libraries}
+# Upload needed libraries and data
+library(caret)
+library(rattle)
+```
+
+```{r data}
+setwd("E:/Documents/R/DS Coursera/Practical Machine Learning")
+
+trainingURL <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+
+testingURL <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+training0 <- read.csv(url(trainingURL), na.strings = c("NA","#DIV/0",""))
+testing0 <- read.csv(url(testingURL), na.strings = c("NA","#DIV/0",""))
+```
+
+##Cleaning the data
+Before partitioning the files to conduct the cross validation, the variables need to be filtered. By visual check, there are a lot of variables that are Near Zero Variables. In here, this is done by visual inspection. However, there is a NearZeroVar function in R that can help with finding zero & near zero variables.
+
+```{r tidyingdata}
+# Column 1 to be removed
+## Columns 12 to 17 donot have data and hence to be removed
+# Columns 18 to 36 are all about averages/st deviations/Variances/Maximum/etc. and hence are redundant and should not be accounted for in the model
+# Columns 50 to 59 are also descriptive stats and should not be accounted for in the model
+## Columns 69 to 74 donot have data and hence to be removed
+# Columns 75 to 83 are also descriptive stats and should not be accounted for in the model
+## Columns 87 to 92 donot have data and hence to be removed
+# Columns 93 to 101 are also descriptive stats and should not be accounted for in the model
+# Columns 103 to 112 are also descriptive stats and should not be accounted for in the model
+## Columns 125 to 130 donot have data and hence to be removed
+# Columns 131 to 139 are also descriptive stats and should not be accounted for in the model
+## Columns 141 to 151 donot have data and hence to be removed
+
+training1 <- training0[,-c(1,12:17,18:36,50:59,69:74,75:83,87:92,93:101,103:112, 125:130,131:139,141:150)] #remove the columns as stated above.
+
+dim(training1)
+```
+
+Now we apply the same cleanup to the testing dataset:
+
+```{r testtidying}
+columns <- colnames(training1)
+testing1 <- testing0[columns[-59]]
+dim(testing1)
+```
+
+## Data Splitting for CV
+We will breakdown the training dataset to a training and validation datasets for the purpose of cross validation. We will use the default Train Control and PreProcess parameters.
+```{r crossvalidation}
+inTrain <- createDataPartition(y= training1$classe,p=0.7,list=FALSE)
+
+training <- training1[inTrain,]
+validation <- training1[-inTrain,]
+```
+
+##ML Prediction: Decision Tree
+```{r DT}
+dtmodel <- train(classe~.,data = training,method="rpart")
+
+fancyRpartPlot(dtmodel$finalModel)
+predictrpart <- predict(dtmodel,validation)
+confusionMatrix(validation$classe,predictrpart)
+```
+
+##ML Prediction: Random Forest
+```{r rf, cache=TRUE}
+rfmodel <- train(classe~.,data = training,method="rf")
+
+rfmodel
+predictrf <- predict(rfmodel,validation)
+confusionMatrix(validation$classe,predictrf)
+```
+From the above, the accuracy of the random forest is much higher than decision tree and hence will use the RF model for the prediction of the test dataset.
+
+##Predicting the test dataset outcome
+
+```{r predicttest}
+predict(rfmodel,testing1)
+```
+
+And this concludes the module project.
